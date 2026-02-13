@@ -2,12 +2,11 @@
 
 Livrable 2 — Architecture Logicielle et Fonctionnelle
 
-Système embarqué de surveillance météorologique autonome.
 
 - Microcontrôleur : Seeeduino Lotus (ATmega328P)
 - Capteurs : Grove + GPS + Carte SD
 - Architecture : Firmware événementiel non bloquant
-- Date : 13 Février 2026
+- Auteurs: ANDRIANARISATA Tsiky; LANDRIER Quentin; LALINNE Robin; BARAKAT Helena
 
 
 
