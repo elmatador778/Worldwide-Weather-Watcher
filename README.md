@@ -58,7 +58,7 @@ Architecture coopérative temps réel.
 ```mermaid
 flowchart TD
     START([Boot]) --> INIT[Initialisation périphériques]
-    INIT --> CHECK{Bouton rouge ?}
+    INIT --> CHECK{Bouton rouge appuyé ?}
 
     CHECK -- Oui --> CONFIG[Mode Configuration]
     CHECK -- Non --> STANDARD[Mode Standard]
@@ -72,21 +72,38 @@ flowchart TD
 
     BTN --> MODE{Changement mode ?}
     MODE -- Oui --> SWITCH[Mise à jour FSM]
-    MODE -- Non --> EXEC[Mode actif]
+    MODE -- Non --> EXEC[Exécution du mode actif]
 
-    EXEC -- Standard --> TIMER1{10 min ?}
+    %% Mode Standard
+    EXEC -- Standard --> TIMER1{10 min écoulées ?}
     TIMER1 -- Oui --> SDWRITE[Écriture SD]
     TIMER1 -- Non --> LOOP
+    SDWRITE --> LOOP
 
-    EXEC -- Eco --> TIMER2{20 min ?}
+    %% Mode Eco
+    EXEC -- Eco --> TIMER2{20 min écoulées ?}
     TIMER2 -- Oui --> SDWRITE2[Écriture SD réduite]
     TIMER2 -- Non --> LOOP
-
-    EXEC -- Maintenance --> SERIAL[Sortie USB live]
-
-    SDWRITE --> LOOP
     SDWRITE2 --> LOOP
+
+    %% Mode Maintenance
+    EXEC -- Maintenance --> SERIAL[Sortie USB live]
+    SERIAL --> LOOP
+
+    %% Mode Configuration
+    EXEC -- Configuration --> CONFIG_OPS[Opérations série / Admin]
+    CONFIG_OPS --> LOOP
+
+    %% Changement de mode
     SWITCH --> LOOP
+
+    %% Cas d'erreur
+    INIT --> ERREUR{Défaut matériel ?}
+    ERREUR -- Oui --> LED_ERR[LED rouge / Stop]
+    ERREUR -- Non --> CHECK
+
+    %% Boucle générale
+    LOOP --> GPS
 
 ```
 
@@ -119,26 +136,25 @@ Exemple :
 gantt
     %%{init: { 'theme': 'base', 'themeVariables': {
         'critBkgColor': '#ff0000',
-        'activeTaskBkgColor': '#0000ff',
         'doneTaskBkgColor': '#00ff00',
-        'sectionBkgColor': '#ffffff',
-        'sectionBkgColor2': '#f4f4f4'
+        'activeTaskBkgColor': '#0000ff',
+        'taskBkgColor': '#ffffff'
     }}}%%
-    title Séquences LED (Correction GitHub)
-    dateFormat X
-    axisFormat %s
+    title Signaux d'Erreur Lumineux (Cycles de 2 secondes)
+    dateFormat  ss
+    axisFormat  %S s
 
     section RTC HS
-    Rouge :crit, 0, 1
-    Bleu  :active, 1, 2
+    Rouge (Erreur)      :crit, 00, 01
+    Bleu (Horloge)      :active, 01, 02
 
     section Capteur HS
-    Rouge :crit, 0, 1
-    Vert  :done, 1, 2
+    Rouge (Erreur)      :crit, 00, 01
+    Vert (Données)      :done, 01, 02
 
-    section SD Pleine
-    Rouge :crit, 0, 1
-    Blanc : 1, 2
+    section SD Pleine / HS
+    Rouge (Erreur)      :crit, 00, 01
+    Blanc (Stockage)    :01, 02
 ```
 
 
