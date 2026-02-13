@@ -26,30 +26,29 @@ Le système est piloté par une Machine à États Finis (FSM).
 
 
 # 2. Machine à États (Modes système)
-
 ```mermaid
-stateDiagram-v2
-    direction TB
 
+  stateDiagram-v2
     [*] --> INITIALISATION
 
-    INITIALISATION : Vérification matériel\nLED orange
-    STANDARD : Acquisition normale\nLED verte
-    CONFIGURATION : Paramétrage série\nLED jaune
-    MAINTENANCE : Diagnostic USB\nLED orange clignotante
-    ECO : Économie énergie\nLED bleue
-    ERREUR : Défaut critique\nLED rouge
+    INITIALISATION : Vérif. matériel / LED orange
+    STANDARD : Acquisition normale / LED verte
+    CONFIGURATION : Paramétrage série / LED jaune
+    MAINTENANCE : Diagnostic USB / LED orange clignotante
+    ECO : Économie énergie / LED bleue
+    ERREUR : Défaut critique / LED rouge
 
     INITIALISATION --> STANDARD : OK matériel
-    INITIALISATION --> ERREUR : Défaut
+    INITIALISATION --> ERREUR : Défaut matériel
 
     STANDARD --> MAINTENANCE : Btn rouge 5s
     STANDARD --> ECO : Btn vert 5s
+    STANDARD --> CONFIGURATION : Cmd série / Admin
 
     ECO --> STANDARD : Btn rouge 5s
     MAINTENANCE --> STANDARD : Retour utilisateur
-```
 
+```
 
 
 # 3. Algorithme Principal
