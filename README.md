@@ -9,7 +9,7 @@ Système embarqué de surveillance météorologique autonome.
 - Architecture : Firmware événementiel non bloquant
 - Date : 13 Février 2026
 
----
+
 
 # 1. Philosophie Logicielle
 
@@ -24,7 +24,7 @@ Aucune utilisation de `delay()` afin de permettre :
 
 Le système est piloté par une Machine à États Finis (FSM).
 
----
+
 
 # 2. Machine à États (Modes système)
 
@@ -35,11 +35,11 @@ stateDiagram-v2
     [*] --> INITIALISATION
 
     INITIALISATION : Vérification matériel\nLED orange
-    STANDARD : Acquisition normale LED verte
-    CONFIGURATION : Paramétrage série LED jaune
-    MAINTENANCE : Diagnostic USB LED orange clignotante
-    ECO : Économie énergie LED bleue
-    ERREUR : Défaut critique  LED rouge
+    STANDARD : Acquisition normale\nLED verte
+    CONFIGURATION : Paramétrage série\nLED jaune
+    MAINTENANCE : Diagnostic USB\nLED orange clignotante
+    ECO : Économie énergie\nLED bleue
+    ERREUR : Défaut critique\nLED rouge
 
     INITIALISATION --> STANDARD : OK matériel
     INITIALISATION --> ERREUR : Défaut
@@ -51,7 +51,7 @@ stateDiagram-v2
     MAINTENANCE --> STANDARD : Retour utilisateur
 ```
 
----
+
 
 # 3. Algorithme Principal
 
@@ -92,73 +92,8 @@ flowchart TD
 ```
 
 
-# 4.Diagramme d’activité
 
-```mermaid
-flowchart TD
-  %% =========================
-  %% DÉMARRAGE + CHOIX DU MODE
-  %% =========================
-  A([Début]) --> B[Initialisation matériel]
-  B --> C{Bouton rouge au démarrage ?}
-
-  C -- oui --> D[Mode CONFIGURATION]
-  D --> D1[LED Jaune]
-  D1 --> D2[Interface série UART]
-  D2 --> D3[Modifier les paramètres EEPROM]
-  D3 --> D4{30 min sans activité ?}
-  D4 -- oui --> D5[Retour en mode STANDARD]
-  D4 -- non --> D2
-
-  C -- non --> E[Mode STANDARD]
-  E --> E1[LED Verte]
-
-  %% Fusion des 2 chemins avant la boucle principale
-  D5 --> M((Fusion))
-  E1 --> M
-
-  %% =========================
-  %% BOUCLE PRINCIPALE
-  %% =========================
-  M --> F{Station allumée ?}
-  F -- non --> Z([Fin d'activité])
-  F -- oui --> G[Lire capteurs]
-  G --> H[Horodatage RTC]
-  H --> I[Vérifier cohérence données]
-  I --> J[Enregistrer sur carte SD]
-  J --> K[Attendre LOG_INTERVAL]
-
-  %% =========================
-  %% ÉVÈNEMENTS / TRANSITIONS
-  %% =========================
-  K --> V{Vert appuyé 5s ?}
-  V -- oui --> ECO[Mode ECONOMIQUE]
-  ECO --> ECO1[LED Bleue]
-  ECO1 --> ECO2[GPS : 1 mesure sur 2]
-  ECO2 --> ECO3[LOG_INTERVAL x2]
-  ECO3 --> ECO4[Rouge 5s = STANDARD]
-  ECO4 --> RJOIN((Fusion et retour))
-
-  V -- non --> R{Rouge appuyé 5s ?}
-  R -- oui --> MAINT[Mode MAINTENANCE]
-  MAINT --> MA1[LED Orange]
-  MA1 --> MA2[Affiche données série]
-  MA2 --> MA3[Pas d'écriture SD]
-  MA3 --> MA4[Rouge 5s = Retour mode précédent]
-  MA4 --> RJOIN
-
-  R -- non --> ERR{Erreur capteur / RTC / SD ?}
-  ERR -- oui --> ERRA[LED clignotante erreur]
-  ERRA --> RJOIN
-  ERR -- non --> RJOIN
-
-  %% Retour à la boucle
-  RJOIN --> F
-```
-
----
-
-# 5. Gestion des Fichiers SD
+# 4. Gestion des Fichiers SD
 
 ## Format des logs
 
@@ -178,41 +113,37 @@ Exemple :
 - dépassement taille → renommage `_1.LOG`
 - nouveau fichier créé
 
----
 
-# 6. Diagnostic LED (Codes erreurs)
 
+# 5. Diagnostic LED (Codes erreurs)
 ```mermaid
 gantt
-    title Séquences LED (visualisation normalisée)
+    %%{init: { 'theme': 'base', 'themeVariables': {
+        'critBkgColor': '#ff0000',
+        'activeTaskBkgColor': '#0000ff',
+        'doneTaskBkgColor': '#00ff00',
+        'sectionBkgColor': '#ffffff',
+        'sectionBkgColor2': '#f4f4f4'
+    }}}%%
+    title Séquences LED (Correction GitHub)
     dateFormat X
     axisFormat %s
 
     section RTC HS
     Rouge :crit, 0, 1
-    Bleu  :active, 1, 1
-
-    section GPS HS
-    Rouge :crit, 0, 1
-    Jaune :active, 1, 1
+    Bleu  :active, 1, 2
 
     section Capteur HS
     Rouge :crit, 0, 1
-    Vert  :active, 1, 1
+    Vert  :done, 1, 2
 
     section SD Pleine
     Rouge :crit, 0, 1
-    Blanc :active, 1, 1
-
-    section Accès SD
-    Rouge court :crit, 0, 1
-    Blanc long  :active, 1, 2
+    Blanc : 1, 2
 ```
 
----
 
-# 7. Paramètres Configurables
-
+# 6. Paramètres Configurables
 | Paramètre | Valeur |
 |---|---|
 | MIN_TEMP_AIR | -10°C |
@@ -221,12 +152,11 @@ gantt
 | PRESSURE_MAX | 1080 hPa |
 | LOG_INTERVAL | 10 min |
 
----
 
-# 8. Architecture Firmware
 
-```mermaid
+Architecture Firmware
 flowchart LR
+
 
     APP[Application FSM]
     DRIVERS[Drivers Capteurs]
@@ -236,20 +166,15 @@ flowchart LR
     APP --> DRIVERS
     DRIVERS --> HAL
     HAL --> HW
-```
 
----
 
-# 9. Objectifs Techniques
 
-- Firmware non bloquant
-- Acquisition multi-capteurs
-- Gestion énergétique
-- Diagnostic terrain
-- Intégrité des données
+Objectifs Techniques
+Firmware non bloquant
+Acquisition multi-capteurs
+Gestion énergétique
+Diagnostic terrain
+Intégrité des données
 
----
 
-# Licence
 
-Projet éducatif — utilisation libre pour apprentissage.
