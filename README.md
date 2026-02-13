@@ -12,10 +12,10 @@ L'architecture est divisée en 4 modules principaux :
 3.  **HAL (Hardware Abstraction Layer) :** Pilotage des capteurs Grove et de la carte SD.
 4.  **Data Manager :** Gestion du système de fichiers et de la configuration EEPROM.
 
----
-
 ## 2. Machine à États (State Machine)
 Le cœur du système est une machine à états finis qui respecte les transitions définies dans le cahier des charges.
 
 ### Diagramme des États-Transitions
 [cite_start]Ce schéma illustre comment le système navigue entre les modes **Standard**, **Éco**, **Maintenance** et **Configuration** en fonction des interactions boutons [cite: 4-14].
+stateDiagram-v2
+    direction LR
