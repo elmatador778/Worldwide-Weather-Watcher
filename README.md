@@ -1,4 +1,4 @@
-# 🌍 Worldwide Weather Watcher — Prototype V1
+# Worldwide Weather Watcher — Prototype V1
 
 **Livrable 2 — Architecture Logicielle et Fonctionnelle**
 
@@ -11,7 +11,7 @@ Système embarqué de surveillance météorologique autonome.
 
 ---
 
-# 🧠 1. Philosophie Logicielle
+#  1. Philosophie Logicielle
 
 Le firmware repose sur une **architecture non-bloquante**.
 
