@@ -17,3 +17,42 @@ Le cœur du système est une machine à états finis qui respecte les transition
 
 ### Diagramme des États-Transitions
 Ce schéma illustre comment le système navigue entre les modes **Standard**, **Éco**, **Maintenance** et **Configuration** en fonction des interactions boutons
+
+```mermaid
+stateDiagram-v2
+    direction LR
+
+    [*] --> Initialisation
+
+    Initialisation --> Mode_Configuration : Bouton rouge maintenu
+    Initialisation --> Mode_Standard : Aucun bouton
+
+    state Mode_Configuration {
+        LED jaune fixe
+        Paramétrage série
+        Timeout 30 min
+    }
+
+    Mode_Configuration --> Mode_Standard : Inactivité
+
+    state Mode_Standard {
+        LED verte
+        Log toutes les 10 min
+    }
+
+    state Mode_Economique {
+        LED bleue
+        Intervalle x2
+        GPS 1/2
+    }
+
+    state Mode_Maintenance {
+        LED orange
+        SD désactivée
+        Lecture USB live
+    }
+
+    Mode_Standard --> Mode_Maintenance : Btn rouge > 5s
+    Mode_Standard --> Mode_Economique : Btn vert > 5s
+    Mode_Economique --> Mode_Standard : Btn rouge > 5s
+    Mode_Maintenance --> Mode_Standard : Btn rouge > 5s
