@@ -116,38 +116,34 @@ Exemple :
 ---
 
 # 5. Diagnostic LED (Codes erreurs)
-
 ```mermaid
 gantt
-    title Séquences LED (visualisation normalisée)
+    %%{init: { 'theme': 'base', 'themeVariables': {
+        'critBkgColor': '#ff0000',
+        'activeTaskBkgColor': '#0000ff',
+        'doneTaskBkgColor': '#00ff00',
+        'sectionBkgColor': '#ffffff',
+        'sectionBkgColor2': '#f4f4f4'
+    }}}%%
+    title Séquences LED (Correction GitHub)
     dateFormat X
     axisFormat %s
 
     section RTC HS
     Rouge :crit, 0, 1
-    Bleu  :active, 1, 1
-
-    section GPS HS
-    Rouge :crit, 0, 1
-    Jaune :active, 1, 1
+    Bleu  :active, 1, 2
 
     section Capteur HS
     Rouge :crit, 0, 1
-    Vert  :active, 1, 1
+    Vert  :done, 1, 2
 
     section SD Pleine
     Rouge :crit, 0, 1
-    Blanc :active, 1, 1
-
-    section Accès SD
-    Rouge court :crit, 0, 1
-    Blanc long  :active, 1, 2
+    Blanc : 1, 2
 ```
-
 ---
 
 # 6. Paramètres Configurables
-
 | Paramètre | Valeur |
 |---|---|
 | MIN_TEMP_AIR | -10°C |
@@ -158,10 +154,9 @@ gantt
 
 ---
 
-# 7. Architecture Firmware
-
-```mermaid
+Architecture Firmware
 flowchart LR
+
 
     APP[Application FSM]
     DRIVERS[Drivers Capteurs]
@@ -171,20 +166,19 @@ flowchart LR
     APP --> DRIVERS
     DRIVERS --> HAL
     HAL --> HW
-```
+
 
 ---
 
-# 8. Objectifs Techniques
-
-- Firmware non bloquant
-- Acquisition multi-capteurs
-- Gestion énergétique
-- Diagnostic terrain
-- Intégrité des données
+Objectifs Techniques
+Firmware non bloquant
+Acquisition multi-capteurs
+Gestion énergétique
+Diagnostic terrain
+Intégrité des données
 
 ---
 
-# Licence
-
+Licence
 Projet éducatif — utilisation libre pour apprentissage.
+
