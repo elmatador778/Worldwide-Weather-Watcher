@@ -35,11 +35,11 @@ stateDiagram-v2
     [*] --> INITIALISATION
 
     INITIALISATION : Vérification matériel\nLED orange
-    STANDARD : Acquisition normale\nLED verte
-    CONFIGURATION : Paramétrage série\nLED jaune
-    MAINTENANCE : Diagnostic USB\nLED orange clignotante
-    ECO : Économie énergie\nLED bleue
-    ERREUR : Défaut critique\nLED rouge
+    STANDARD : Acquisition normale LED verte
+    CONFIGURATION : Paramétrage série LED jaune
+    MAINTENANCE : Diagnostic USB LED orange clignotante
+    ECO : Économie énergie LED bleue
+    ERREUR : Défaut critique  LED rouge
 
     INITIALISATION --> STANDARD : OK matériel
     INITIALISATION --> ERREUR : Défaut
