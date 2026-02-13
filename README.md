@@ -91,9 +91,74 @@ flowchart TD
     SDWRITE2 --> LOOP
 ```
 
+
+# 4.Diagramme d’activité
+
+```mermaid
+flowchart TD
+  %% =========================
+  %% DÉMARRAGE + CHOIX DU MODE
+  %% =========================
+  A([Début]) --> B[Initialisation matériel]
+  B --> C{Bouton rouge au démarrage ?}
+
+  C -- oui --> D[Mode CONFIGURATION]
+  D --> D1[LED Jaune]
+  D1 --> D2[Interface série UART]
+  D2 --> D3[Modifier les paramètres EEPROM]
+  D3 --> D4{30 min sans activité ?}
+  D4 -- oui --> D5[Retour en mode STANDARD]
+  D4 -- non --> D2
+
+  C -- non --> E[Mode STANDARD]
+  E --> E1[LED Verte]
+
+  %% Fusion des 2 chemins avant la boucle principale
+  D5 --> M((Fusion))
+  E1 --> M
+
+  %% =========================
+  %% BOUCLE PRINCIPALE
+  %% =========================
+  M --> F{Station allumée ?}
+  F -- non --> Z([Fin d'activité])
+  F -- oui --> G[Lire capteurs]
+  G --> H[Horodatage RTC]
+  H --> I[Vérifier cohérence données]
+  I --> J[Enregistrer sur carte SD]
+  J --> K[Attendre LOG_INTERVAL]
+
+  %% =========================
+  %% ÉVÈNEMENTS / TRANSITIONS
+  %% =========================
+  K --> V{Vert appuyé 5s ?}
+  V -- oui --> ECO[Mode ECONOMIQUE]
+  ECO --> ECO1[LED Bleue]
+  ECO1 --> ECO2[GPS : 1 mesure sur 2]
+  ECO2 --> ECO3[LOG_INTERVAL x2]
+  ECO3 --> ECO4[Rouge 5s = STANDARD]
+  ECO4 --> RJOIN((Fusion et retour))
+
+  V -- non --> R{Rouge appuyé 5s ?}
+  R -- oui --> MAINT[Mode MAINTENANCE]
+  MAINT --> MA1[LED Orange]
+  MA1 --> MA2[Affiche données série]
+  MA2 --> MA3[Pas d'écriture SD]
+  MA3 --> MA4[Rouge 5s = Retour mode précédent]
+  MA4 --> RJOIN
+
+  R -- non --> ERR{Erreur capteur / RTC / SD ?}
+  ERR -- oui --> ERRA[LED clignotante erreur]
+  ERRA --> RJOIN
+  ERR -- non --> RJOIN
+
+  %% Retour à la boucle
+  RJOIN --> F
+```
+
 ---
 
-# 4. Gestion des Fichiers SD
+# 5. Gestion des Fichiers SD
 
 ## Format des logs
 
@@ -115,7 +180,7 @@ Exemple :
 
 ---
 
-# 5. Diagnostic LED (Codes erreurs)
+# 6. Diagnostic LED (Codes erreurs)
 
 ```mermaid
 gantt
@@ -146,7 +211,7 @@ gantt
 
 ---
 
-# 6. Paramètres Configurables
+# 7. Paramètres Configurables
 
 | Paramètre | Valeur |
 |---|---|
@@ -158,7 +223,7 @@ gantt
 
 ---
 
-# 7. Architecture Firmware
+# 8. Architecture Firmware
 
 ```mermaid
 flowchart LR
@@ -175,7 +240,7 @@ flowchart LR
 
 ---
 
-# 8. Objectifs Techniques
+# 9. Objectifs Techniques
 
 - Firmware non bloquant
 - Acquisition multi-capteurs
