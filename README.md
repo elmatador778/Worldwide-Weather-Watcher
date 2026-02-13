@@ -1,7 +1,7 @@
-# 🏗️ Livrable 2 : Architecture Logicielle du Système
+# Livrable 2 : Architecture Logicielle du Système
 **Projet :** Worldwide Weather Watcher  
 **Plateforme :** Seeeduino Lotus (ATmega328P) + Grove Ecosystem  
-**Auteurs :** [Ton Nom / Groupe]  
+**Auteurs :** ANDRIANARISATA Tsiky; LALINNE Robin; LANDRIER Quentin  
 
 ## 1. Vue d'ensemble
 Ce document décrit l'architecture logicielle de la station météo. Le système repose sur une **programmation événementielle non-bloquante** pour garantir la fiabilité de l'acquisition GPS et la réactivité de l'interface utilisateur.
