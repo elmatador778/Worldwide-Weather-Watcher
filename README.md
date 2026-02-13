@@ -57,14 +57,13 @@ Architecture coopérative temps réel.
 
 ```mermaid
 flowchart TD
-
     START([Boot]) --> INIT[Initialisation périphériques]
     INIT --> CHECK{Bouton rouge ?}
 
     CHECK -- Oui --> CONFIG[Mode Configuration]
     CHECK -- Non --> STANDARD[Mode Standard]
 
-    STANDARD --> LOOP((Boucle principale))
+    STANDARD --> LOOP[Boucle principale]
     CONFIG --> LOOP
 
     LOOP --> GPS[Lecture GPS prioritaire]
@@ -73,20 +72,22 @@ flowchart TD
 
     BTN --> MODE{Changement mode ?}
     MODE -- Oui --> SWITCH[Mise à jour FSM]
-    MODE -- Non --> EXEC
-
-    EXEC{Mode actif}
+    MODE -- Non --> EXEC[Mode actif]
 
     EXEC -- Standard --> TIMER1{10 min ?}
     TIMER1 -- Oui --> SDWRITE[Écriture SD]
+    TIMER1 -- Non --> LOOP
 
     EXEC -- Eco --> TIMER2{20 min ?}
     TIMER2 -- Oui --> SDWRITE2[Écriture SD réduite]
+    TIMER2 -- Non --> LOOP
 
     EXEC -- Maintenance --> SERIAL[Sortie USB live]
 
     SDWRITE --> LOOP
     SDWRITE2 --> LOOP
+    SWITCH --> LOOP
+
 ```
 
 
