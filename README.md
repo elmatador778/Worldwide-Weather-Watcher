@@ -203,142 +203,312 @@ Diagnostic terrain
 Intégrité des données
 
 # 7. Pseudo-Code
+## 1. Déclarations globales (Énumérations et Structures)
+
 ```cpp
+// --- ÉNUMÉRATIONS (Pour les switch case) ---
 
-Entrées :
-  - Paramètres EEPROM : LOG_INTERVAL, FILE_MAX_SIZE, TIMEOUT, (paramètres capteurs)
-  - Capteurs : pression, température air, hygrométrie, luminosité, GPS
-  - Modules : RTC, SD, LED, UART, boutons (rouge, vert)
+[cite_start]// Les 4 modes de la station [cite: 481, 483, 485, 488]
+enum ModeStation { STANDARD, CONFIGURATION, MAINTENANCE, ECONOMIQUE };
 
-Sorties :
-  - Fichiers .LOG sur SD (lignes horodatées)
-  - Affichage série (mode maintenance / configuration)
-  - Signalisation LED (états & erreurs)
+// Les événements possibles (matériels ou logiciels)
+enum Evenement { AUCUN, BOUTON_ROUGE_DEMARRAGE, BOUTON_ROUGE_5S, BOUTON_VERT_5S, TIMER_ACQUISITION, TIMEOUT_CONFIG_30M, RECEPTION_UART };
 
+[cite_start]// Les états de santé du système (incluant les erreurs matérielles) [cite: 492, 496, 497, 498, 499, 500]
+enum EtatSysteme { 
+    OK, 
+    ERREUR_RTC,                 // Rouge/Bleu 
+    ERREUR_GPS,                 // Rouge/Jaune 
+    ERREUR_CAPTEUR_ACCES,       // Rouge/Vert (durées identiques)
+    ERREUR_CAPTEUR_INCOHERENT,  // Rouge/Vert (Vert plus long)
+    SD_PLEINE,                  // Rouge/Blanc (durées identiques)
+    ERREUR_SD_ACCES             // Rouge/Blanc (Blanc plus long)
+};
 
-1  // Initialisation 
-2  initialiser_bus(I2C, SPI, UART)
-3  initialiser_modules(RTC, SD, LED)
-4  initialiser_capteurs()
-5
-6  si accès_RTC_impossible alors signaler_LED(ERREUR_RTC)
-7  si accès_SD_impossible  alors signaler_LED(ERREUR_SD)
-8
-9  si bouton_rouge_presse_au_demarrage alors
-10     mode ← CONFIGURATION
-11  sinon
-12     mode ← STANDARD
-13  fin si
-14
-15  mode_precedent ← STANDARD
-16  compteur_cycle ← 0
+[cite_start]// Les commandes console (Mode Configuration) [cite: 520, 523, 524, 525, 529, 532, 535]
+enum CommandeSerie { 
+    INCONNUE, SET_LOG_INTERVAL, SET_FILE_MAX_SIZE, SET_TIMEOUT, 
+    SET_LUMIN, SET_TEMP_AIR, SET_HYGR, SET_PRESSURE, 
+    SET_CLOCK, SET_DATE, SET_DAY, CMD_RESET, CMD_VERSION 
+};
 
+// --- STRUCTURES DE DONNÉES ---
 
-17 // Boucle principale
-18 tant que station_allumee faire
+[cite_start]// Paramètres stockés en mémoire EEPROM [cite: 508, 513, 527, 529, 532]
+struct ConfigurationSysteme {
+    int logInterval;       // Par défaut 10 min
+    int fileMaxSize;       // Par défaut 2048 octets
+    int timeoutCapteur;    // Par défaut 30 sec
+    
+    int luminActif;        // 1 (activé) ou 0 (désactivé)
+    int luminLow;
+    int luminHigh;
+    
+    int tempAirActif;
+    int minTempAir;
+    int maxTempAir;
+    
+    int hygrActif;
+    int hygrMinT;
+    int hygrMaxT;
+    
+    int pressureActif;
+    int pressureMin;
+    int pressureMax;
+};
 
-19    // Gestion LED par mode
-20    si mode = STANDARD      alors LED ← VERTE_CONTINUE
-21    si mode = CONFIGURATION alors LED ← JAUNE_CONTINUE
-22    si mode = ECONOMIQUE    alors LED ← BLEUE_CONTINUE
-23    si mode = MAINTENANCE   alors LED ← ORANGE_CONTINUE
+// Données d'un cycle de mesure
+struct MesuresMeteo {
+    char horodatage[20];
+    float temperature;   // Prendra la valeur "NA" en cas de timeout
+    float pression;      
+    float humidite;      
+    int luminosite;      
+    float latitude;
+    float longitude;
+};
 
-24    // Détection événements boutons (appuis longs)
-25    si appui_long(bouton_rouge, 5s) alors
-26       si mode = MAINTENANCE alors
-27          mode ← mode_precedent                 // retour au mode précédent
-28       sinon si mode = ECONOMIQUE alors
-29          mode ← STANDARD                       // en ECO, rouge 5s -> STANDARD
-30       sinon
-31          mode_precedent ← mode                 // STANDARD ou ECONOMIQUE -> MAINTENANCE
-32          mode ← MAINTENANCE
-33       fin si
-34    fin si
-35
-36    si appui_long(bouton_vert, 5s) alors
-37       si mode = STANDARD alors
-38          mode ← ECONOMIQUE                     // ECO accessible uniquement depuis STANDARD
-39       fin si
-40    fin si
+// --- VARIABLES GLOBALES ---
 
+ModeStation modeActuel = STANDARD;
+ModeStation modePrecedent = STANDARD; [cite_start]// Utile pour le retour de maintenance [cite: 487]
+Evenement eventActuel = AUCUN;
+EtatSysteme etatGlobal = OK;
 
-41    // Mode CONFIGURATION
-42    si mode = CONFIGURATION alors
-43       demarrer_timer_inactivite(30min)
-44       tant que mode = CONFIGURATION faire
-45          si commande_UART_disponible alors
-46             executer_commande_configuration()   // LOG_INTERVAL, FILE_MAX_SIZE, TIMEOUT, seuils, CLOCK/DATE/DAY, RESET, VERSION...
-47             reinitialiser_timer_inactivite()
-48          fin si
-49          si timer_inactivite_ecoule alors
-50             mode ← STANDARD
-51          fin si
-52       fin tant que
-53    fin si
-
-
-54    // Mode MAINTENANCE
-55    si mode = MAINTENANCE alors
-56       // pas d’écriture SD, données consultables en direct via UART
-57       mesures ← lire_capteurs_avec_timeout(TIMEOUT)
-58       afficher_UART(mesures)
-59       continuer   // retour au début de boucle (événements boutons gérés en haut)
-60    fin si
-
-
-61    //  Modes STANDARD / ECONOMIQUE : acquisition + log SD 
-62    si mode = STANDARD ou mode = ECONOMIQUE alors
-
-63       // Ajustement intervalle en mode économique
-64       si mode = ECONOMIQUE alors
-65          intervalle_effectif ← 2 × LOG_INTERVAL
-66       sinon
-67          intervalle_effectif ← LOG_INTERVAL
-68       fin si
-
-69       attendre(intervalle_effectif)
-
-70       // Acquisition capteurs
-71       mesures ← lire_capteurs_avec_timeout(TIMEOUT)
-72       horodatage ← lire_RTC()
-
-73       // Acquisition GPS : 1 mesure sur 2 en ECO
-74       si mode = ECONOMIQUE alors
-75          compteur_cycle ← compteur_cycle + 1
-76          si compteur_cycle mod 2 = 0 alors
-77             gps ← lire_GPS_avec_timeout(TIMEOUT)
-78          sinon
-79             gps ← "NA"
-80          fin si
-81       sinon
-82          gps ← lire_GPS_avec_timeout(TIMEOUT)
-83       fin si
-
-84       // Construire ligne horodatée (une ligne = toutes mesures)
-85       ligne ← formatter(horodatage, mesures, gps)
-
-86       // Écriture SD avec gestion taille fichier + archivage
-87       si SD_pleine alors signaler_LED(SD_PLEINE)
-88       sinon si erreur_ecriture_SD alors signaler_LED(ERREUR_ECRITURE_SD)
-89       sinon
-90          ecrire_SD(ligne)
-91          si taille_fichier_LOG() ≥ FILE_MAX_SIZE alors
-92             archiver_fichier_LOG_revision()     // copie avec numéro de révision, puis reprise au début du fichier 0
-93          fin si
-94       fin si
-
-95       // Gestion erreurs capteurs / GPS / RTC (LED clignotantes)
-96       si erreur_RTC  alors signaler_LED(ERREUR_RTC)
-97       si erreur_GPS  alors signaler_LED(ERREUR_GPS)
-98       si erreur_capteur alors signaler_LED(ERREUR_CAPTEUR)
-
-99    fin si
-
-100 fin tant que
-
-101 retourner
-
+ConfigurationSysteme config;
+MesuresMeteo dernieresMesures;
+int compteurCycleEco = 0; [cite_start]// Pour la parité du GPS en mode éco [cite: 541]
 ```
+## 2. Initialisation et Boucle Principale
+
+```cpp
+void setup() {
+    initialiserMateriel();
+    chargerConfigurationEEPROM(&config);
+
+    [cite_start]// Détection du mode au démarrage [cite: 481, 483]
+    Evenement eventDemarrage = lireBoutonRougeDemarrage();
+    
+    switch (eventDemarrage) {
+        case BOUTON_ROUGE_DEMARRAGE:
+            modeActuel = CONFIGURATION;
+            allumerLED_Jaune(); [cite_start]// [cite: 492]
+            demarrerMinuteurInactivite();
+            break;
+            
+        case AUCUN:
+        default:
+            modeActuel = STANDARD;
+            allumerLED_Verte(); [cite_start]// [cite: 492]
+            demarrerTimerAcquisition(config.logInterval);
+            break;
+    }
+}
+
+void loop() {
+    // 1. Écoute continue des événements matériels
+    eventActuel = detecterEvenement(); 
+
+    // 2. Aiguillage selon le mode en cours (Machine à états principale)
+    switch (modeActuel) {
+        case STANDARD:
+            gererModeStandard(eventActuel);
+            break;
+            
+        case ECONOMIQUE:
+            gererModeEconomique(eventActuel);
+            break;
+            
+        case MAINTENANCE:
+            gererModeMaintenance(eventActuel);
+            break;
+            
+        case CONFIGURATION:
+            gererModeConfiguration(eventActuel);
+            break;
+    }
+    
+    // 3. Gestion globale des erreurs visuelles (indépendante du mode)
+    afficherErreurLED(etatGlobal);
+}
+```
+## 3. Fonctions de gestion des Modes (Les sous-machines à états)
+```cpp
+void gererModeStandard(Evenement event) {
+    switch (event) {
+        case TIMER_ACQUISITION:
+            etatGlobal = acquerirHorodatage(&dernieresMesures);
+            
+            switch (etatGlobal) {
+                case OK:
+                    etatGlobal = acquerirTousCapteursActifs(&dernieresMesures, &config);
+                    [cite_start]// Gestion de l'archivage SD (AAMMJJ_0.LOG) [cite: 514, 516]
+                    verifierTailleEtArchiverFichierSD(config.fileMaxSize); 
+                    etatGlobal = ecrireSurSD(dernieresMesures);
+                    break;
+            }
+            break;
+
+        case BOUTON_VERT_5S:
+            [cite_start]// Passage en mode Économique [cite: 488, 489]
+            modeActuel = ECONOMIQUE;
+            compteurCycleEco = 0;
+            allumerLED_Bleue(); [cite_start]// [cite: 492]
+            demarrerTimerAcquisition(config.logInterval * 2); [cite_start]// [cite: 541]
+            break;
+
+        case BOUTON_ROUGE_5S:
+            [cite_start]// Passage en mode Maintenance [cite: 485, 486]
+            modePrecedent = STANDARD;
+            modeActuel = MAINTENANCE;
+            allumerLED_Orange(); [cite_start]// [cite: 492]
+            arreterBusSPI(); [cite_start]// Sécurisation carte SD [cite: 485]
+            break;
+
+        case AUCUN:
+        default:
+            break;
+    }
+}
+
+void gererModeEconomique(Evenement event) {
+    switch (event) {
+        case TIMER_ACQUISITION:
+            // L'intervalle est déjà doublé
+            acquerirHorodatage(&dernieresMesures);
+            acquerirCapteursMeteoActifs(&dernieresMesures, &config);
+            
+            [cite_start]// Gestion de l'énergie GPS (1 cycle sur 2) [cite: 541]
+            switch (compteurCycleEco % 2) {
+                case 0: // Cycle Pair
+                    acquerirGPS(&dernieresMesures);
+                    memoriserDernierePosition(dernieresMesures);
+                    break;
+                case 1: // Cycle Impair
+                    recupererDernierePosition(&dernieresMesures);
+                    break;
+            }
+            compteurCycleEco++;
+            
+            ecrireSurSD(dernieresMesures);
+            break;
+
+        case BOUTON_ROUGE_5S:
+            [cite_start]// Retour au Standard [cite: 490]
+            modeActuel = STANDARD;
+            allumerLED_Verte();
+            demarrerTimerAcquisition(config.logInterval);
+            break;
+            
+        case AUCUN:
+        default:
+            break;
+    }
+}
+
+void gererModeMaintenance(Evenement event) {
+    switch (event) {
+        case TIMER_ACQUISITION:
+            [cite_start]// Envoi des données en direct via UART (pas d'écriture SD) [cite: 538]
+            acquerirTousCapteursActifs(&dernieresMesures, &config);
+            envoyerDonneesConsoleSerie(dernieresMesures);
+            break;
+
+        case BOUTON_ROUGE_5S:
+            [cite_start]// Sortie de maintenance et retour au mode précédent [cite: 487]
+            reinitialiserCommunicationSD(); [cite_start]// [cite: 539]
+            modeActuel = modePrecedent;
+            
+            switch (modeActuel) {
+                case STANDARD:
+                    allumerLED_Verte();
+                    break;
+                case ECONOMIQUE:
+                    allumerLED_Bleue();
+                    break;
+            }
+            break;
+            
+        case AUCUN:
+        default:
+            break;
+    }
+}
+
+void gererModeConfiguration(Evenement event) {
+    switch (event) {
+        case RECEPTION_UART:
+            resetMinuteurInactivite(); 
+            CommandeSerie cmd = lireCommandeSerie();
+            
+            switch (cmd) {
+                case SET_LOG_INTERVAL:
+                case SET_FILE_MAX_SIZE:
+                case SET_TIMEOUT:
+                case SET_LUMIN:
+                case SET_TEMP_AIR:
+                    appliquerNouveauParametreEEPROM(&config);
+                    envoyerMessageConsole("OK: Parametre mis a jour");
+                    break;
+                case SET_CLOCK:
+                case SET_DATE:
+                    mettreAJourRTC();
+                    envoyerMessageConsole("OK: Horloge mise a jour");
+                    break;
+                case CMD_VERSION:
+                    envoyerMessageConsole("V1.0 LOT ABC"); [cite_start]// [cite: 525]
+                    break;
+                case CMD_RESET:
+                    reinitialiserParametresUsine(&config); [cite_start]// [cite: 524]
+                    break;
+                case INCONNUE:
+                    envoyerMessageConsole("Syntax Error");
+                    break;
+            }
+            break;
+
+        case TIMEOUT_CONFIG_30M:
+            [cite_start]// 30 min sans activité [cite: 484]
+            modeActuel = STANDARD;
+            allumerLED_Verte();
+            demarrerTimerAcquisition(config.logInterval);
+            break;
+            
+        case AUCUN:
+        default:
+            break;
+    }
+}
+```
+## 4. Fonction d'affichage des erreurs (Détachée pour la clarté)
+```cpp
+void afficherErreurLED(EtatSysteme etat) {
+    switch (etat) {
+        case OK:
+            // La LED garde sa couleur de mode (Verte, Bleue, etc.)
+            break;
+        case ERREUR_RTC:
+            allumerLED_Clignotante(ROUGE_BLEU, 50, 50); [cite_start]// [cite: 492]
+            break;
+        case ERREUR_GPS:
+            allumerLED_Clignotante(ROUGE_JAUNE, 50, 50); [cite_start]// [cite: 496]
+            break;
+        case ERREUR_CAPTEUR_ACCES:
+            allumerLED_Clignotante(ROUGE_VERT, 50, 50); [cite_start]// [cite: 497]
+            break;
+        case ERREUR_CAPTEUR_INCOHERENT:
+            allumerLED_Clignotante(ROUGE_VERT, 33, 66); [cite_start]// Vert 2x plus long [cite: 498]
+            break;
+        case SD_PLEINE:
+            allumerLED_Clignotante(ROUGE_BLANC, 50, 50); [cite_start]// [cite: 499]
+            break;
+        case ERREUR_SD_ACCES:
+            allumerLED_Clignotante(ROUGE_BLANC, 33, 66); [cite_start]// Blanc 2x plus long [cite: 500]
+            break;
+    }
+}
+```
+
 
 
 
