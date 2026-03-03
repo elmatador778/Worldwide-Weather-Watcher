@@ -208,13 +208,13 @@ Intégrité des données
 ```cpp
 // --- ÉNUMÉRATIONS (Pour les switch case) ---
 
-[cite_start]// Les 4 modes de la station [cite: 481, 483, 485, 488]
+[cite_start]// Les 4 modes de la station 
 enum ModeStation { STANDARD, CONFIGURATION, MAINTENANCE, ECONOMIQUE };
 
 // Les événements possibles (matériels ou logiciels)
 enum Evenement { AUCUN, BOUTON_ROUGE_DEMARRAGE, BOUTON_ROUGE_5S, BOUTON_VERT_5S, TIMER_ACQUISITION, TIMEOUT_CONFIG_30M, RECEPTION_UART };
 
-[cite_start]// Les états de santé du système (incluant les erreurs matérielles) [cite: 492, 496, 497, 498, 499, 500]
+[cite_start]// Les états de santé du système (incluant les erreurs matérielles) 
 enum EtatSysteme { 
     OK, 
     ERREUR_RTC,                 // Rouge/Bleu 
@@ -225,7 +225,7 @@ enum EtatSysteme {
     ERREUR_SD_ACCES             // Rouge/Blanc (Blanc plus long)
 };
 
-[cite_start]// Les commandes console (Mode Configuration) [cite: 520, 523, 524, 525, 529, 532, 535]
+[cite_start]// Les commandes console (Mode Configuration) 
 enum CommandeSerie { 
     INCONNUE, SET_LOG_INTERVAL, SET_FILE_MAX_SIZE, SET_TIMEOUT, 
     SET_LUMIN, SET_TEMP_AIR, SET_HYGR, SET_PRESSURE, 
@@ -234,7 +234,7 @@ enum CommandeSerie {
 
 // --- STRUCTURES DE DONNÉES ---
 
-[cite_start]// Paramètres stockés en mémoire EEPROM [cite: 508, 513, 527, 529, 532]
+[cite_start]// Paramètres stockés en mémoire EEPROM 
 struct ConfigurationSysteme {
     int logInterval;       // Par défaut 10 min
     int fileMaxSize;       // Par défaut 2048 octets
@@ -271,13 +271,13 @@ struct MesuresMeteo {
 // --- VARIABLES GLOBALES ---
 
 ModeStation modeActuel = STANDARD;
-ModeStation modePrecedent = STANDARD; [cite_start]// Utile pour le retour de maintenance [cite: 487]
+ModeStation modePrecedent = STANDARD; [cite_start]// Utile pour le retour de maintenance 
 Evenement eventActuel = AUCUN;
 EtatSysteme etatGlobal = OK;
 
 ConfigurationSysteme config;
 MesuresMeteo dernieresMesures;
-int compteurCycleEco = 0; [cite_start]// Pour la parité du GPS en mode éco [cite: 541]
+int compteurCycleEco = 0; [cite_start]// Pour la parité du GPS en mode éco 
 ```
 ## 2. Initialisation et Boucle Principale
 
@@ -286,20 +286,20 @@ void setup() {
     initialiserMateriel();
     chargerConfigurationEEPROM(&config);
 
-    [cite_start]// Détection du mode au démarrage [cite: 481, 483]
+    [cite_start]// Détection du mode au démarrage 
     Evenement eventDemarrage = lireBoutonRougeDemarrage();
     
     switch (eventDemarrage) {
         case BOUTON_ROUGE_DEMARRAGE:
             modeActuel = CONFIGURATION;
-            allumerLED_Jaune(); [cite_start]// [cite: 492]
+            allumerLED_Jaune(); [cite_start]// 
             demarrerMinuteurInactivite();
             break;
             
         case AUCUN:
         default:
             modeActuel = STANDARD;
-            allumerLED_Verte(); [cite_start]// [cite: 492]
+            allumerLED_Verte(); [cite_start]// 
             demarrerTimerAcquisition(config.logInterval);
             break;
     }
@@ -342,7 +342,7 @@ void gererModeStandard(Evenement event) {
             switch (etatGlobal) {
                 case OK:
                     etatGlobal = acquerirTousCapteursActifs(&dernieresMesures, &config);
-                    [cite_start]// Gestion de l'archivage SD (AAMMJJ_0.LOG) [cite: 514, 516]
+                    [cite_start]// Gestion de l'archivage SD (AAMMJJ_0.LOG) 
                     verifierTailleEtArchiverFichierSD(config.fileMaxSize); 
                     etatGlobal = ecrireSurSD(dernieresMesures);
                     break;
@@ -350,19 +350,19 @@ void gererModeStandard(Evenement event) {
             break;
 
         case BOUTON_VERT_5S:
-            [cite_start]// Passage en mode Économique [cite: 488, 489]
+            [cite_start]// Passage en mode Économique 
             modeActuel = ECONOMIQUE;
             compteurCycleEco = 0;
-            allumerLED_Bleue(); [cite_start]// [cite: 492]
-            demarrerTimerAcquisition(config.logInterval * 2); [cite_start]// [cite: 541]
+            allumerLED_Bleue(); [cite_start]//
+            demarrerTimerAcquisition(config.logInterval * 2); [cite_start]// 
             break;
 
         case BOUTON_ROUGE_5S:
-            [cite_start]// Passage en mode Maintenance [cite: 485, 486]
+            [cite_start]// Passage en mode Maintenance 
             modePrecedent = STANDARD;
             modeActuel = MAINTENANCE;
-            allumerLED_Orange(); [cite_start]// [cite: 492]
-            arreterBusSPI(); [cite_start]// Sécurisation carte SD [cite: 485]
+            allumerLED_Orange(); [cite_start]// 
+            arreterBusSPI(); [cite_start]// Sécurisation carte SD 
             break;
 
         case AUCUN:
@@ -378,7 +378,7 @@ void gererModeEconomique(Evenement event) {
             acquerirHorodatage(&dernieresMesures);
             acquerirCapteursMeteoActifs(&dernieresMesures, &config);
             
-            [cite_start]// Gestion de l'énergie GPS (1 cycle sur 2) [cite: 541]
+            [cite_start]// Gestion de l'énergie GPS (1 cycle sur 2) 
             switch (compteurCycleEco % 2) {
                 case 0: // Cycle Pair
                     acquerirGPS(&dernieresMesures);
@@ -394,7 +394,7 @@ void gererModeEconomique(Evenement event) {
             break;
 
         case BOUTON_ROUGE_5S:
-            [cite_start]// Retour au Standard [cite: 490]
+            [cite_start]// Retour au Standard 
             modeActuel = STANDARD;
             allumerLED_Verte();
             demarrerTimerAcquisition(config.logInterval);
@@ -409,14 +409,14 @@ void gererModeEconomique(Evenement event) {
 void gererModeMaintenance(Evenement event) {
     switch (event) {
         case TIMER_ACQUISITION:
-            [cite_start]// Envoi des données en direct via UART (pas d'écriture SD) [cite: 538]
+            [cite_start]// Envoi des données en direct via UART (pas d'écriture SD) 
             acquerirTousCapteursActifs(&dernieresMesures, &config);
             envoyerDonneesConsoleSerie(dernieresMesures);
             break;
 
         case BOUTON_ROUGE_5S:
-            [cite_start]// Sortie de maintenance et retour au mode précédent [cite: 487]
-            reinitialiserCommunicationSD(); [cite_start]// [cite: 539]
+            [cite_start]// Sortie de maintenance et retour au mode précédent
+            reinitialiserCommunicationSD(); [cite_start]// 
             modeActuel = modePrecedent;
             
             switch (modeActuel) {
@@ -456,10 +456,10 @@ void gererModeConfiguration(Evenement event) {
                     envoyerMessageConsole("OK: Horloge mise a jour");
                     break;
                 case CMD_VERSION:
-                    envoyerMessageConsole("V1.0 LOT ABC"); [cite_start]// [cite: 525]
+                    envoyerMessageConsole("V1.0 LOT ABC"); [cite_start]// 
                     break;
                 case CMD_RESET:
-                    reinitialiserParametresUsine(&config); [cite_start]// [cite: 524]
+                    reinitialiserParametresUsine(&config); [cite_start]//
                     break;
                 case INCONNUE:
                     envoyerMessageConsole("Syntax Error");
@@ -468,7 +468,7 @@ void gererModeConfiguration(Evenement event) {
             break;
 
         case TIMEOUT_CONFIG_30M:
-            [cite_start]// 30 min sans activité [cite: 484]
+            [cite_start]// 30 min sans activité 
             modeActuel = STANDARD;
             allumerLED_Verte();
             demarrerTimerAcquisition(config.logInterval);
@@ -488,22 +488,22 @@ void afficherErreurLED(EtatSysteme etat) {
             // La LED garde sa couleur de mode (Verte, Bleue, etc.)
             break;
         case ERREUR_RTC:
-            allumerLED_Clignotante(ROUGE_BLEU, 50, 50); [cite_start]// [cite: 492]
+            allumerLED_Clignotante(ROUGE_BLEU, 50, 50); [cite_start]//
             break;
         case ERREUR_GPS:
-            allumerLED_Clignotante(ROUGE_JAUNE, 50, 50); [cite_start]// [cite: 496]
+            allumerLED_Clignotante(ROUGE_JAUNE, 50, 50); [cite_start]//
             break;
         case ERREUR_CAPTEUR_ACCES:
-            allumerLED_Clignotante(ROUGE_VERT, 50, 50); [cite_start]// [cite: 497]
+            allumerLED_Clignotante(ROUGE_VERT, 50, 50); [cite_start]//
             break;
         case ERREUR_CAPTEUR_INCOHERENT:
-            allumerLED_Clignotante(ROUGE_VERT, 33, 66); [cite_start]// Vert 2x plus long [cite: 498]
+            allumerLED_Clignotante(ROUGE_VERT, 33, 66); [cite_start]// Vert 2x plus long 
             break;
         case SD_PLEINE:
-            allumerLED_Clignotante(ROUGE_BLANC, 50, 50); [cite_start]// [cite: 499]
+            allumerLED_Clignotante(ROUGE_BLANC, 50, 50); [cite_start]// 
             break;
         case ERREUR_SD_ACCES:
-            allumerLED_Clignotante(ROUGE_BLANC, 33, 66); [cite_start]// Blanc 2x plus long [cite: 500]
+            allumerLED_Clignotante(ROUGE_BLANC, 33, 66); [cite_start]// Blanc 2x plus long 
             break;
     }
 }
