@@ -499,6 +499,7 @@ void mettreAJourLED() {
 ```
 
 ## 5.Code complet 
+```cpp
 
 /*
 * PROJET: World Wide Weather Watcher
@@ -954,4 +955,4 @@ void envoyerDonneesSerie(const MesuresMeteo& m) {
 // Entête des colonnes pour le moniteur série
 void afficherLegende() { Serial.println(F("DATE|HEURE|TEMP|HYGR|LUM|GPS")); }
 
-
+```
