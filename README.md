@@ -206,15 +206,15 @@ Intégrité des données
 ## 1. Déclarations globales (Énumérations et Structures)
 
 ```cpp
-// --- ÉNUMÉRATIONS (Pour les switch case) ---
+//  ÉNUMÉRATIONS 
 
-[cite_start]// Les 4 modes de la station 
+// Les 4 modes de la station 
 enum ModeStation { STANDARD, CONFIGURATION, MAINTENANCE, ECONOMIQUE };
 
 // Les événements possibles (matériels ou logiciels)
 enum Evenement { AUCUN, BOUTON_ROUGE_DEMARRAGE, BOUTON_ROUGE_5S, BOUTON_VERT_5S, TIMER_ACQUISITION, TIMEOUT_CONFIG_30M, RECEPTION_UART };
 
-[cite_start]// Les états de santé du système (incluant les erreurs matérielles) 
+// Les états de santé du système (incluant les erreurs matérielles) 
 enum EtatSysteme { 
     OK, 
     ERREUR_RTC,                 // Rouge/Bleu 
@@ -225,7 +225,7 @@ enum EtatSysteme {
     ERREUR_SD_ACCES             // Rouge/Blanc (Blanc plus long)
 };
 
-[cite_start]// Les commandes console (Mode Configuration) 
+// Les commandes console (Mode Configuration) 
 enum CommandeSerie { 
     INCONNUE, SET_LOG_INTERVAL, SET_FILE_MAX_SIZE, SET_TIMEOUT, 
     SET_LUMIN, SET_TEMP_AIR, SET_HYGR, SET_PRESSURE, 
@@ -234,7 +234,7 @@ enum CommandeSerie {
 
 // --- STRUCTURES DE DONNÉES ---
 
-[cite_start]// Paramètres stockés en mémoire EEPROM 
+// Paramètres stockés en mémoire EEPROM 
 struct ConfigurationSysteme {
     int logInterval;       // Par défaut 10 min
     int fileMaxSize;       // Par défaut 2048 octets
@@ -268,7 +268,7 @@ struct MesuresMeteo {
     float longitude;
 };
 
-// --- VARIABLES GLOBALES ---
+// VARIABLES GLOBALES 
 
 ModeStation modeActuel = STANDARD;
 ModeStation modePrecedent = STANDARD; [cite_start]// Utile pour le retour de maintenance 
@@ -277,7 +277,7 @@ EtatSysteme etatGlobal = OK;
 
 ConfigurationSysteme config;
 MesuresMeteo dernieresMesures;
-int compteurCycleEco = 0; [cite_start]// Pour la parité du GPS en mode éco 
+int compteurCycleEco = 0; // Pour la parité du GPS en mode éco 
 ```
 ## 2. Initialisation et Boucle Principale
 
@@ -286,20 +286,20 @@ void setup() {
     initialiserMateriel();
     chargerConfigurationEEPROM(&config);
 
-    [cite_start]// Détection du mode au démarrage 
+    // Détection du mode au démarrage 
     Evenement eventDemarrage = lireBoutonRougeDemarrage();
     
     switch (eventDemarrage) {
         case BOUTON_ROUGE_DEMARRAGE:
             modeActuel = CONFIGURATION;
-            allumerLED_Jaune(); [cite_start]// 
+            allumerLED_Jaune(); // 
             demarrerMinuteurInactivite();
             break;
             
         case AUCUN:
         default:
             modeActuel = STANDARD;
-            allumerLED_Verte(); [cite_start]// 
+            allumerLED_Verte(); // 
             demarrerTimerAcquisition(config.logInterval);
             break;
     }
@@ -342,7 +342,7 @@ void gererModeStandard(Evenement event) {
             switch (etatGlobal) {
                 case OK:
                     etatGlobal = acquerirTousCapteursActifs(&dernieresMesures, &config);
-                    [cite_start]// Gestion de l'archivage SD (AAMMJJ_0.LOG) 
+                    // Gestion de l'archivage SD (AAMMJJ_0.LOG) 
                     verifierTailleEtArchiverFichierSD(config.fileMaxSize); 
                     etatGlobal = ecrireSurSD(dernieresMesures);
                     break;
@@ -350,19 +350,19 @@ void gererModeStandard(Evenement event) {
             break;
 
         case BOUTON_VERT_5S:
-            [cite_start]// Passage en mode Économique 
+            // Passage en mode Économique 
             modeActuel = ECONOMIQUE;
             compteurCycleEco = 0;
-            allumerLED_Bleue(); [cite_start]//
-            demarrerTimerAcquisition(config.logInterval * 2); [cite_start]// 
+            allumerLED_Bleue(); //
+            demarrerTimerAcquisition(config.logInterval * 2); // 
             break;
 
         case BOUTON_ROUGE_5S:
-            [cite_start]// Passage en mode Maintenance 
+            // Passage en mode Maintenance 
             modePrecedent = STANDARD;
             modeActuel = MAINTENANCE;
-            allumerLED_Orange(); [cite_start]// 
-            arreterBusSPI(); [cite_start]// Sécurisation carte SD 
+            allumerLED_Orange(); // 
+            arreterBusSPI(); // Sécurisation carte SD 
             break;
 
         case AUCUN:
@@ -378,7 +378,7 @@ void gererModeEconomique(Evenement event) {
             acquerirHorodatage(&dernieresMesures);
             acquerirCapteursMeteoActifs(&dernieresMesures, &config);
             
-            [cite_start]// Gestion de l'énergie GPS (1 cycle sur 2) 
+            // Gestion de l'énergie GPS (1 cycle sur 2) 
             switch (compteurCycleEco % 2) {
                 case 0: // Cycle Pair
                     acquerirGPS(&dernieresMesures);
@@ -394,7 +394,7 @@ void gererModeEconomique(Evenement event) {
             break;
 
         case BOUTON_ROUGE_5S:
-            [cite_start]// Retour au Standard 
+            // Retour au Standard 
             modeActuel = STANDARD;
             allumerLED_Verte();
             demarrerTimerAcquisition(config.logInterval);
@@ -409,14 +409,14 @@ void gererModeEconomique(Evenement event) {
 void gererModeMaintenance(Evenement event) {
     switch (event) {
         case TIMER_ACQUISITION:
-            [cite_start]// Envoi des données en direct via UART (pas d'écriture SD) 
+            // Envoi des données en direct via UART (pas d'écriture SD) 
             acquerirTousCapteursActifs(&dernieresMesures, &config);
             envoyerDonneesConsoleSerie(dernieresMesures);
             break;
 
         case BOUTON_ROUGE_5S:
-            [cite_start]// Sortie de maintenance et retour au mode précédent
-            reinitialiserCommunicationSD(); [cite_start]// 
+            // Sortie de maintenance et retour au mode précédent
+            reinitialiserCommunicationSD(); // 
             modeActuel = modePrecedent;
             
             switch (modeActuel) {
@@ -456,10 +456,10 @@ void gererModeConfiguration(Evenement event) {
                     envoyerMessageConsole("OK: Horloge mise a jour");
                     break;
                 case CMD_VERSION:
-                    envoyerMessageConsole("V1.0 LOT ABC"); [cite_start]// 
+                    envoyerMessageConsole("V1.0 LOT ABC"); // 
                     break;
                 case CMD_RESET:
-                    reinitialiserParametresUsine(&config); [cite_start]//
+                    reinitialiserParametresUsine(&config); //
                     break;
                 case INCONNUE:
                     envoyerMessageConsole("Syntax Error");
@@ -468,7 +468,7 @@ void gererModeConfiguration(Evenement event) {
             break;
 
         case TIMEOUT_CONFIG_30M:
-            [cite_start]// 30 min sans activité 
+            // 30 min sans activité 
             modeActuel = STANDARD;
             allumerLED_Verte();
             demarrerTimerAcquisition(config.logInterval);
