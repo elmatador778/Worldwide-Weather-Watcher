@@ -937,3 +937,230 @@ void envoyerDonneesSerie(const MesuresMeteo& m) {
 void afficherLegende() { Serial.println(F("DATE|HEURE|TEMP|HYGR|LUM|GPS")); }
 
 ```
+
+# 8. Documentation
+# Worldwide Weather Watcher
+
+## INTRODUCTION
+Le projet Worldwide Weather Watcher consiste à développer un prototype de station météo embarquée à destination des navires de surveillance. Le système doit pouvoir mesurer plusieurs paramètres environnementaux, les stocker et permettre à l’utilisateur d’interagir simplement avec lui.
+
+L’objectif est de concevoir un système robuste et fiable, autonome mais modulaire afin de pouvoir intégrer et modifier les composants. La simplicité d’exploitation de ce système doit permettre une utilisation intuitive et efficace par l’utilisateur final.
+
+---
+
+## 1. DOCUMENTATION TECHNIQUE
+Cette partie présente l’architecture matérielle et logicielle du système ainsi que les choix techniques ayant guidé la conception.
+
+### 1.1 Architecture matérielle
+#### 1.1.1 Microcontrôleur
+La centrale météorologique est fondée sur un microcontrôleur ATmega328P, qui constitue la pièce maîtresse de la station. Il gère les capteurs, le traitement des données captées, leur stockage sur la carte SD, la communication entre les divers modules et la prise en charge des interruptions pour garantir un fonctionnement réactif et fiable.
+
+### 1.2 Matériel utilisé
+#### 1.2.1 Capteurs
+* **DHT11** : Mesure de la température et de l’humidité ambiante.
+* **Capteur analogique** : Mesure de la luminosité via l’entrée analogique du microcontrôleur.
+* **Module GPS** : Fournit la latitude et la longitude pour la localisation géographique.
+* **Module RTC DS1307** : Fournit la date et l’heure précises afin d’horodater chaque mesure enregistrée.
+
+#### 1.2.2 Interfaces
+* **Carte SD** : Interface SPI haut débit pour le stockage des données collectées sous un format exploitable (CSV).
+* **Écran LCD Grove 16x2** : Communique via le bus I2C pour l’affichage des mesures en mode maintenance.
+* **LED RGB** : Indicateur visuel de l’état et des erreurs du système.
+* **Boutons poussoirs (Rouge et Vert)** : Permettent à l’utilisateur de changer de mode de fonctionnement et d’interagir avec la station.
+
+### 1.3 Rôle de la carte rouge (Seeeduino Lotus)
+La carte rouge Seeeduino Lotus permet un câblage simplifié grâce aux connecteurs Grove intégrés, facilitant l’assemblage du système. Elle améliore l’organisation générale du montage, réduit les risques d’erreurs de connexion et offre une architecture propre et modulaire. Cette conception permet également d’ajouter facilement de nouveaux capteurs ou modules lors d’évolutions futures.
+
+---
+
+## 2. CHOIX TECHNIQUES ET JUSTIFICATION
+
+### 2.1 Architecture événementielle
+Le système repose sur une architecture événementielle basée sur :
+* Une machine à états (FSM)
+* Une détection d’événements
+* Des interruptions matérielles
+
+Cette approche assure une séparation claire des comportements selon les modes de fonctionnement, facilite la maintenance du programme et simplifie son évolution future (ajout de nouvelles fonctionnalités/capteurs).
+
+### 2.2 Utilisation des interruptions
+Les boutons sont connectés aux interruptions matérielles `INT0` et `INT1` du microcontrôleur, permettant au système de réagir immédiatement à une action de l’utilisateur. Cela garantit une détection précise des appuis longs tout en réduisant la charge du processeur, sans nécessiter de vérification continue dans la boucle principale.
+
+### 2.3 Gestion du temps avec `millis()`
+La fonction `millis()` permet :
+* Un déclenchement périodique des mesures
+* Un fonctionnement non bloquant
+* Une meilleure stabilité du système
+
+### 2.4 Choix des protocoles
+
+| Module | Protocole | Justification |
+| :--- | :--- | :--- |
+| **RTC** | I2C | Bus simple à 2 fils |
+| **LCD** | I2C | Partage du bus |
+| **SD** | SPI | Rapidité et fiabilité |
+| **GPS** | UART | Standard GPS |
+| **Luminosité** | Analogique | Lecture directe ADC |
+
+---
+
+## 3. FONCTIONNEMENT GLOBAL DU SYSTÈME
+
+### 3.1 Flux d'information
+L’ensemble du traitement s’oriente vers l’acquisition de données fournies par les capteurs. Elles sont transférées au microcontrôleur pour traitement puis, selon l'analyse : stockées sur la carte SD, affichées sur l’écran LCD, utilisées pour piloter la LED d’état, ou envoyées via le port série USB.
+
+**Description :**
+1. Les capteurs envoient leurs données au microcontrôleur.
+2. Les données sont traitées.
+3. Elles sont enregistrées (SD), affichées (LCD) ou envoyées (Serial).
+4. La LED indique l’état ou une erreur.
+
+### 3.2 Séquence de fonctionnement
+1. Initialisation matérielle (`setup`)
+2. Détermination du mode initial
+3. Boucle principale (`loop`)
+4. Détection d’événement
+5. Action selon le mode
+6. Mise à jour LED
+
+---
+
+## 4. ARCHITECTURE GÉNÉRALE DU PROGRAMME
+
+### 4.1 Organisation structurelle
+* **`setup()`** : Exécutée une seule fois au démarrage. Initialise les périphériques (Serial, I2C, SPI, GPS, DHT, RTC, LCD, SD), configure les interruptions et détermine le mode initial.
+* **`loop()`** : Boucle principale. S’exécute en continu, détecte les événements et oriente le comportement en fonction du mode actif.
+* **`detecterEvenement()`** : Analyse les sources d’événements (appui long, temporisation d’acquisition, réception commande série, dépassement de temps).
+* **`acquerirDonneesMeteo()`** : Réalise l’acquisition des mesures (RTC, DHT, luminosité, GPS).
+* **`ecrireSurSD()`** : Enregistre les données au format CSV sur la carte SD et gère les erreurs d’accès.
+* **`mettreAJourLED()`** : Adapte la couleur ou le clignotement de la LED RGB selon le mode ou les erreurs.
+* **`traiterCommandeSerie()`** : Analyse les commandes via le port série et met à jour les paramètres EEPROM.
+* **`afficherMeteoLCD()`** : Affiche les mesures (température, humidité, luminosité) sur l’écran LCD.
+
+### 4.2 Machine à états
+**Les 4 modes possibles :**
+* **STANDARD** : Acquisition et enregistrement périodique des données.
+* **ÉCONOMIQUE** : Réduit la fréquence d’acquisition pour optimiser la consommation.
+* **MAINTENANCE** : Diagnostic avec affichage direct des mesures.
+* **CONFIGURATION** : Modification des paramètres via le port série.
+
+Un seul mode est actif à la fois. Transitions déclenchées par : Appui long (Rouge/Vert), Timeout configuration, ou Timer interne.
+
+---
+
+## 5. DESCRIPTION DÉTAILLÉE DU CODE
+
+### 5.1 Fonction `setup()`
+Exécutée une seule fois. Rôles :
+* Initialisation série (9600 bauds), I2C, SPI, GPS, DHT11, RTC, LCD, SD et LED RGB.
+* Configuration des broches des boutons en `INPUT_PULLUP` et activation des interruptions `INT0`/`INT1`.
+* Détermination du mode initial (Démarrage classique = STANDARD. Si bouton rouge maintenu = CONFIGURATION).
+
+### 5.2 Fonction `loop()`
+S’exécute en continu (logique événementielle) :
+* **Mode STANDARD** : Mesure et enregistrement périodique.
+* **Mode ÉCONOMIQUE** : Similaire au STANDARD, mais intervalle d’acquisition doublé.
+* **Mode MAINTENANCE** : Affichage LCD et Envoi Série uniquement (pas d'enregistrement SD).
+* **Mode CONFIGURATION** : Attente de commandes série. Retourne en STANDARD après 30 minutes d'inactivité.
+
+### 5.3 Fonction `acquerirDonneesMeteo()`
+Regroupe toutes les lectures capteurs (RTC, Luminosité, DHT11, GPS). Les valeurs sont stockées dans une structure `MesuresMeteo`.
+
+### 5.4 Fonction `ecrireSurSD()`
+Ouvre le fichier `METEO.LOG`, écrit les données au format CSV (Date, Heure, Température, Humidité, Luminosité, Latitude, Longitude), ferme le fichier, et gère les erreurs d'accès.
+
+### 5.5 Gestion des interruptions
+`INT0` et `INT1` enregistrent l'instant d'appui (`millis()`). La durée est calculée dans `detecterEvenement()` pour identifier les appuis de plus de 3 secondes sans bloquer le code.
+
+### 5.6 Gestion des erreurs
+La variable globale `erreurGlobale` gère les états : Erreur RTC, Erreur GPS, Erreur capteur, Erreur carte SD. La LED RGB est mise à jour en conséquence.
+
+### 5.7 Fonction `detecterEvenement()`
+Cœur de l'architecture événementielle. Vérifie :
+1. Détection des appuis longs (Bouton Rouge / Vert > 3s).
+2. Commandes port série (`Serial.available()`).
+3. Timer d'acquisition (intervalle normal ou doublé en éco).
+4. Timeout d'inactivité en configuration (30 min).
+
+---
+
+## 6. DOCUMENTATION UTILISATEUR
+
+### 6.1 Démarrage
+1. Alimenter la carte via le port USB.
+2. Le système effectue une phase d’initialisation.
+3. LED verte fixe = fonctionnement normal en mode **STANDARD**.
+
+### 6.2 Utilisation des boutons
+* **Bouton Vert (Appui long)** : Passe de STANDARD à ÉCONOMIQUE.
+* **Bouton Rouge (Appui long)** : Passe de STANDARD à MAINTENANCE.
+* **Bouton Rouge (Appui long en Maintenance)** : Retour au mode précédent.
+* **Bouton Rouge maintenu au démarrage** : Démarrage en mode CONFIGURATION.
+
+### 6.3 Mode Maintenance
+Consultation directe des mesures en temps réel pour diagnostic.
+* **Ligne 1** : Température (°C) et humidité (%)
+* **Ligne 2** : Valeur de la luminosité
+*(Note : Aucune donnée n’est enregistrée sur la carte SD dans ce mode).*
+
+### 6.4 Récupération des données
+1. Mettre le système hors tension.
+2. Retirer la carte SD et l'insérer dans un ordinateur.
+3. Ouvrir le fichier `METEO.LOG`.
+4. Importer le fichier dans un tableur (Excel/Calc) pour analyser les données (format CSV).
+
+---
+
+## CONCLUSION
+Le prototype conçu satisfait aux exigences fonctionnelles : acquisition fiable, stockage structuré, interface simple et architecture modulaire. Le système peut être étendu vers une version industrielle intégrant des capteurs supplémentaires (pression atmosphérique, température de l’eau), un module de communication radio, et un mécanisme d’archivage intelligent.
+
+
+
+# 9. Diagramme de flux Mermaid
+```mermaid
+
+flowchart TD
+    %% Initialisation au démarrage
+    Start([Mise sous tension]) --> Setup[Initialisation des périphériques : setup]
+    Setup --> CheckBouton{Bouton Rouge maintenu ?}
+
+    %% Sélection du mode initial
+    CheckBouton -- Oui --> ModeConfig[Mode CONFIGURATION]
+    CheckBouton -- Non --> ModeStd[Mode STANDARD]
+
+    %% Boucle de fonctionnement
+    ModeConfig --> Loop[Boucle principale : loop]
+    ModeStd --> Loop
+    ModeEco[Mode ÉCONOMIQUE] --> Loop
+    ModeMaint[Mode MAINTENANCE] --> Loop
+
+    %% Le cœur décisionnel (Analyse des événements)
+    Loop --> Detect{Événement détecté ?}
+
+    %% Actions du Mode Standard / Éco
+    Detect -- "Timer atteint" --> Acq[Acquisition Capteurs + Écriture SD]
+    Acq -.-> ModeStd
+
+    %% Changements de modes par boutons
+    Detect -- "Bouton Vert (Appui long)" --> ModeEco
+    
+    Detect -- "Bouton Rouge (Appui long)" --> CheckState{Mode Actuel ?}
+    CheckState -- "Standard" --> ModeMaint
+    CheckState -- "Maintenance" --> ModeStd
+    CheckState -- "Économique" --> ModeStd
+
+    %% Actions du Mode Maintenance
+    Detect -- "Diagnostic" --> MaintAction[Affichage LCD + Envoi Série]
+    MaintAction -.-> ModeMaint
+
+    %% Actions du Mode Configuration
+    Detect -- "Données Série" --> ConfigAction[Mise à jour des paramètres EEPROM]
+    ConfigAction -.-> ModeConfig
+    
+    Detect -- "Inactivité (30 min)" --> Timeout[Retour automatique STANDARD]
+    Timeout -.-> ModeStd
+
+    %% Gestion visuelle
+    Detect -- "Toutes les boucles" --> Led[Mise à jour LED d'état]
+
+```
